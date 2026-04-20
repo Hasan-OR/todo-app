@@ -251,17 +251,63 @@
   </div>
 
   <script>
-    let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+    const SUPABASE_URL = 'https://ioriowfqskouxspnxjqv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlvcmlvd2Zxc2tvdXhzcG54anF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDYyMjksImV4cCI6MjA5MTU4MjIyOX0.iAA3gl55d3i6ZDwo7HEOEqIXfmCoGFqNvB_1C6GexBc';
+
+    const HEADERS = {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+
+    let todos = [];
     let filter = 'all';
 
-    const input = document.getElementById('todo-input');
-    const list  = document.getElementById('todo-list');
+    const input      = document.getElementById('todo-input');
+    const list       = document.getElementById('todo-list');
     const countLabel = document.getElementById('count-label');
 
-    function save() {
-      localStorage.setItem('todos', JSON.stringify(todos));
+    // ── API helpers ──────────────────────────────────────────────
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        ...options,
+        headers: { ...HEADERS, ...(options.headers || {}) }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
     }
 
+    async function fetchTodos() {
+      return apiFetch('todos?order=created_at.asc');
+    }
+
+    async function createTodo(text) {
+      const rows = await apiFetch('todos', {
+        method: 'POST',
+        body: JSON.stringify({ text, done: false })
+      });
+      return rows[0];
+    }
+
+    async function updateTodo(id, patch) {
+      const rows = await apiFetch(`todos?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch)
+      });
+      return rows[0];
+    }
+
+    async function deleteTodo(id) {
+      await apiFetch(`todos?id=eq.${id}`, { method: 'DELETE' });
+    }
+
+    async function deleteCompleted() {
+      await apiFetch('todos?done=eq.true', { method: 'DELETE' });
+    }
+
+    // ── Render ───────────────────────────────────────────────────
     function render() {
       const filtered = todos.filter(t => {
         if (filter === 'active')    return !t.done;
@@ -289,36 +335,50 @@
     }
 
     function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      return str.replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function addTodo() {
+    function setLoading(on) {
+      document.getElementById('add-btn').disabled = on;
+    }
+
+    // ── Actions ──────────────────────────────────────────────────
+    async function addTodo() {
       const text = input.value.trim();
       if (!text) return;
-      todos.push({ id: Date.now(), text, done: false });
       input.value = '';
-      save();
-      render();
+      setLoading(true);
+      try {
+        const todo = await createTodo(text);
+        todos.push(todo);
+        render();
+      } finally {
+        setLoading(false);
+      }
     }
 
     document.getElementById('add-btn').addEventListener('click', addTodo);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
 
-    list.addEventListener('change', e => {
+    list.addEventListener('change', async e => {
       if (e.target.type !== 'checkbox') return;
       const id = +e.target.closest('.todo-item').dataset.id;
-      const todo = todos.find(t => t.id === id);
-      if (todo) { todo.done = e.target.checked; save(); render(); }
+      const done = e.target.checked;
+      const updated = await updateTodo(id, { done });
+      const idx = todos.findIndex(t => t.id === id);
+      if (idx !== -1) todos[idx] = updated;
+      render();
     });
 
-    list.addEventListener('click', e => {
+    list.addEventListener('click', async e => {
       const item = e.target.closest('.todo-item');
       if (!item) return;
       const id = +item.dataset.id;
 
       if (e.target.classList.contains('delete-btn')) {
+        await deleteTodo(id);
         todos = todos.filter(t => t.id !== id);
-        save();
         render();
       } else if (e.target.classList.contains('edit-btn')) {
         item.classList.add('editing');
@@ -329,20 +389,24 @@
         const editInput = item.querySelector('.edit-input');
         const newText = editInput.value.trim();
         if (!newText) return;
-        const todo = todos.find(t => t.id === id);
-        if (todo) { todo.text = newText; save(); render(); }
+        const updated = await updateTodo(id, { text: newText });
+        const idx = todos.findIndex(t => t.id === id);
+        if (idx !== -1) todos[idx] = updated;
+        render();
       }
     });
 
-    list.addEventListener('keydown', e => {
+    list.addEventListener('keydown', async e => {
       if (!e.target.classList.contains('edit-input')) return;
       const item = e.target.closest('.todo-item');
       const id = +item.dataset.id;
       if (e.key === 'Enter') {
         const newText = e.target.value.trim();
         if (!newText) return;
-        const todo = todos.find(t => t.id === id);
-        if (todo) { todo.text = newText; save(); render(); }
+        const updated = await updateTodo(id, { text: newText });
+        const idx = todos.findIndex(t => t.id === id);
+        if (idx !== -1) todos[idx] = updated;
+        render();
       } else if (e.key === 'Escape') {
         item.classList.remove('editing');
       }
@@ -357,13 +421,18 @@
       });
     });
 
-    document.getElementById('clear-btn').addEventListener('click', () => {
+    document.getElementById('clear-btn').addEventListener('click', async () => {
+      await deleteCompleted();
       todos = todos.filter(t => !t.done);
-      save();
       render();
     });
 
-    render();
+    // ── Init ─────────────────────────────────────────────────────
+    (async () => {
+      list.innerHTML = '<p class="empty-msg">Yükleniyor...</p>';
+      todos = await fetchTodos();
+      render();
+    })();
   </script>
 </body>
 </html>
