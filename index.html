@@ -473,15 +473,20 @@
     // ── App UI ───────────────────────────────────────────────────
     function enterApp() {
       document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('app-section').style.display  = '';
+      document.getElementById('app-section').style.display  = 'block';
       document.getElementById('user-email-label').textContent = session.user?.email || '';
       loadTodos();
     }
 
     async function loadTodos() {
       document.getElementById('todo-list').innerHTML = '<p class="empty-msg">Yükleniyor...</p>';
-      todos = await api.list();
-      render();
+      try {
+        todos = await api.list() ?? [];
+        render();
+      } catch (e) {
+        document.getElementById('todo-list').innerHTML =
+          `<p class="empty-msg">Görevler yüklenemedi: ${e.message}</p>`;
+      }
     }
 
     function render() {
