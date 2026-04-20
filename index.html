@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Todo Uygulaması</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -21,31 +17,145 @@
       padding: 40px 16px;
     }
 
-    .container {
+    /* ── Auth card ─────────────────────────────── */
+    #auth-section {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+
+    .auth-header {
+      background: #4f46e5;
+      color: #fff;
+      padding: 28px 28px 20px;
+    }
+
+    .auth-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .auth-header p  { font-size: 13px; opacity: .8; }
+
+    .auth-body { padding: 28px; }
+
+    .tab-row {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .tab-row button {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      cursor: pointer;
+      color: #555;
+      transition: all .15s;
+    }
+
+    .tab-row button.active {
+      background: #4f46e5;
+      color: #fff;
+    }
+
+    .auth-body label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 4px;
+      margin-top: 14px;
+    }
+
+    .auth-body label:first-of-type { margin-top: 0; }
+
+    .auth-body input[type="email"],
+    .auth-body input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    .auth-body input:focus { border-color: #4f46e5; }
+
+    .auth-submit {
+      width: 100%;
+      margin-top: 20px;
+      padding: 11px;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .auth-submit:hover:not(:disabled) { background: #4338ca; }
+    .auth-submit:disabled { opacity: .6; cursor: default; }
+
+    .auth-msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .auth-msg.error   { background: #fef2f2; color: #dc2626; display: block; }
+    .auth-msg.success { background: #f0fdf4; color: #16a34a; display: block; }
+
+    /* ── Todo app ──────────────────────────────── */
+    #app-section {
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.08);
       width: 100%;
       max-width: 480px;
       overflow: hidden;
+      display: none;
     }
 
-    .header {
+    .app-header {
       background: #4f46e5;
       color: #fff;
-      padding: 28px 24px 20px;
+      padding: 20px 24px;
     }
 
-    .header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    .input-row {
+    .app-header-top {
       display: flex;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
     }
+
+    .app-header-top h1 { font-size: 20px; font-weight: 700; }
+
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-email { font-size: 12px; opacity: .8; }
+
+    #logout-btn {
+      background: rgba(255,255,255,.2);
+      border: none;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    #logout-btn:hover { background: rgba(255,255,255,.35); }
+
+    .input-row { display: flex; gap: 8px; }
 
     .input-row input {
       flex: 1;
@@ -64,12 +174,11 @@
       border-radius: 8px;
       font-size: 20px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background .2s;
     }
 
-    .input-row button:hover {
-      background: #6366f1;
-    }
+    .input-row button:hover:not(:disabled) { background: #6366f1; }
+    .input-row button:disabled { opacity: .6; }
 
     .filters {
       display: flex;
@@ -86,7 +195,7 @@
       font-size: 13px;
       cursor: pointer;
       color: #555;
-      transition: all 0.15s;
+      transition: all .15s;
     }
 
     .filters button.active {
@@ -95,11 +204,7 @@
       color: #fff;
     }
 
-    .todo-list {
-      list-style: none;
-      padding: 8px 0;
-      min-height: 60px;
-    }
+    .todo-list { list-style: none; padding: 8px 0; min-height: 60px; }
 
     .todo-item {
       display: flex;
@@ -107,103 +212,60 @@
       gap: 12px;
       padding: 12px 24px;
       border-bottom: 1px solid #f5f5f5;
-      transition: background 0.15s;
+      transition: background .15s;
     }
 
-    .todo-item:last-child {
-      border-bottom: none;
-    }
-
-    .todo-item:hover {
-      background: #fafafa;
-    }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-item:hover { background: #fafafa; }
 
     .todo-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
+      width: 18px; height: 18px;
       accent-color: #4f46e5;
-      cursor: pointer;
-      flex-shrink: 0;
+      cursor: pointer; flex-shrink: 0;
     }
 
     .todo-item .text {
-      flex: 1;
-      font-size: 15px;
-      color: #222;
-      word-break: break-word;
+      flex: 1; font-size: 15px; color: #222; word-break: break-word;
     }
 
-    .todo-item.completed .text {
-      text-decoration: line-through;
-      color: #aaa;
-    }
+    .todo-item.completed .text { text-decoration: line-through; color: #aaa; }
 
     .todo-item .edit-btn,
     .todo-item .delete-btn {
-      background: none;
-      border: none;
-      font-size: 15px;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
-      transition: color 0.15s;
-      flex-shrink: 0;
+      background: none; border: none; font-size: 15px;
+      cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      transition: color .15s; flex-shrink: 0;
     }
 
-    .todo-item .edit-btn {
-      color: #aaa;
-    }
+    .todo-item .edit-btn   { color: #aaa; }
+    .todo-item .edit-btn:hover   { color: #4f46e5; }
+    .todo-item .delete-btn { color: #ccc; font-size: 18px; }
+    .todo-item .delete-btn:hover { color: #ef4444; }
 
-    .todo-item .edit-btn:hover {
-      color: #4f46e5;
-    }
-
-    .todo-item .delete-btn {
-      color: #ccc;
-      font-size: 18px;
-    }
-
-    .todo-item .delete-btn:hover {
-      color: #ef4444;
-    }
-
-    .todo-item.editing .text { display: none; }
+    .todo-item.editing .text    { display: none; }
     .todo-item.editing .edit-btn { display: none; }
 
     .edit-input {
-      flex: 1;
-      padding: 4px 10px;
-      border: 1px solid #4f46e5;
-      border-radius: 6px;
-      font-size: 15px;
-      outline: none;
-      display: none;
+      flex: 1; padding: 4px 10px;
+      border: 1px solid #4f46e5; border-radius: 6px;
+      font-size: 15px; outline: none; display: none;
     }
 
     .todo-item.editing .edit-input { display: block; }
 
     .save-btn {
-      background: #4f46e5;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 13px;
-      cursor: pointer;
-      flex-shrink: 0;
-      display: none;
+      background: #4f46e5; color: #fff; border: none;
+      border-radius: 6px; padding: 4px 10px; font-size: 13px;
+      cursor: pointer; flex-shrink: 0; display: none;
     }
 
     .todo-item.editing .save-btn { display: block; }
 
     .empty-msg {
-      text-align: center;
-      color: #bbb;
-      font-size: 14px;
-      padding: 32px;
+      text-align: center; color: #bbb; font-size: 14px; padding: 32px;
     }
 
-    .footer {
+    .app-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -213,26 +275,61 @@
       color: #888;
     }
 
-    .footer button {
-      background: none;
-      border: none;
-      color: #ef4444;
-      font-size: 13px;
-      cursor: pointer;
+    .app-footer button {
+      background: none; border: none; color: #ef4444;
+      font-size: 13px; cursor: pointer;
     }
 
-    .footer button:hover {
-      text-decoration: underline;
-    }
+    .app-footer button:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Yapılacaklar</h1>
+
+  <!-- ── Auth Section ─────────────────────────── -->
+  <div id="auth-section">
+    <div class="auth-header">
+      <h1>Todo Uygulaması</h1>
+      <p>Devam etmek için giriş yapın veya kayıt olun.</p>
+    </div>
+    <div class="auth-body">
+      <div class="tab-row">
+        <button id="tab-login"    class="active" onclick="showTab('login')">Giriş Yap</button>
+        <button id="tab-register"               onclick="showTab('register')">Kayıt Ol</button>
+      </div>
+
+      <div id="form-login">
+        <label>E-posta</label>
+        <input type="email"    id="login-email"    placeholder="ornek@eposta.com" autocomplete="email">
+        <label>Şifre</label>
+        <input type="password" id="login-password" placeholder="••••••••"         autocomplete="current-password">
+        <button class="auth-submit" onclick="doLogin()">Giriş Yap</button>
+      </div>
+
+      <div id="form-register" style="display:none">
+        <label>E-posta</label>
+        <input type="email"    id="reg-email"    placeholder="ornek@eposta.com" autocomplete="email">
+        <label>Şifre</label>
+        <input type="password" id="reg-password" placeholder="En az 6 karakter"  autocomplete="new-password">
+        <button class="auth-submit" onclick="doRegister()">Kayıt Ol</button>
+      </div>
+
+      <div id="auth-msg" class="auth-msg"></div>
+    </div>
+  </div>
+
+  <!-- ── App Section ──────────────────────────── -->
+  <div id="app-section">
+    <div class="app-header">
+      <div class="app-header-top">
+        <h1>Yapılacaklar</h1>
+        <div class="user-info">
+          <span class="user-email" id="user-email-label"></span>
+          <button id="logout-btn" onclick="doLogout()">Çıkış</button>
+        </div>
+      </div>
       <div class="input-row">
         <input type="text" id="todo-input" placeholder="Yeni görev ekle..." maxlength="200">
-        <button id="add-btn" title="Ekle">+</button>
+        <button id="add-btn">+</button>
       </div>
     </div>
 
@@ -244,168 +341,242 @@
 
     <ul class="todo-list" id="todo-list"></ul>
 
-    <div class="footer">
+    <div class="app-footer">
       <span id="count-label">0 görev kaldı</span>
       <button id="clear-btn">Tamamlananları sil</button>
     </div>
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://ioriowfqskouxspnxjqv.supabase.co';
+    const SUPABASE_URL      = 'https://ioriowfqskouxspnxjqv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlvcmlvd2Zxc2tvdXhzcG54anF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDYyMjksImV4cCI6MjA5MTU4MjIyOX0.iAA3gl55d3i6ZDwo7HEOEqIXfmCoGFqNvB_1C6GexBc';
 
-    const HEADERS = {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
+    let session = JSON.parse(localStorage.getItem('sb_session') || 'null');
+    let todos   = [];
+    let filter  = 'all';
 
-    let todos = [];
-    let filter = 'all';
+    // ── Auth helpers ─────────────────────────────────────────────
+    function authHeaders(token) {
+      return {
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token || SUPABASE_ANON_KEY}`,
+        'Content-Type':  'application/json'
+      };
+    }
 
-    const input      = document.getElementById('todo-input');
-    const list       = document.getElementById('todo-list');
-    const countLabel = document.getElementById('count-label');
+    async function authFetch(path, options = {}) {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+        ...options,
+        headers: { ...authHeaders(), ...(options.headers || {}) }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error_description || data.msg || 'Hata oluştu');
+      return data;
+    }
 
-    // ── API helpers ──────────────────────────────────────────────
+    function saveSession(s) {
+      session = s;
+      localStorage.setItem('sb_session', JSON.stringify(s));
+    }
+
+    function clearSession() {
+      session = null;
+      localStorage.removeItem('sb_session');
+    }
+
+    // ── REST API helpers ─────────────────────────────────────────
     async function apiFetch(path, options = {}) {
+      const token = session?.access_token;
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
         ...options,
-        headers: { ...HEADERS, ...(options.headers || {}) }
+        headers: {
+          ...authHeaders(token),
+          'Prefer': 'return=representation',
+          ...(options.headers || {})
+        }
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (res.status === 204 || res.headers.get('content-length') === '0') return null;
       const text = await res.text();
+      if (!res.ok) throw new Error(text);
       return text ? JSON.parse(text) : null;
     }
 
-    async function fetchTodos() {
-      return apiFetch('todos?order=created_at.asc');
+    const api = {
+      list:            ()         => apiFetch('todos?order=created_at.asc'),
+      create:          (text)     => apiFetch('todos', { method: 'POST', body: JSON.stringify({ text, done: false, user_id: session.user.id }) }),
+      update:          (id, patch)=> apiFetch(`todos?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+      remove:          (id)       => apiFetch(`todos?id=eq.${id}`, { method: 'DELETE' }),
+      removeCompleted: ()         => apiFetch('todos?done=eq.true', { method: 'DELETE' })
+    };
+
+    // ── Auth tab UI ──────────────────────────────────────────────
+    function showTab(tab) {
+      document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+      document.getElementById('form-register').style.display = tab === 'register' ? '' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      setMsg('', '');
     }
 
-    async function createTodo(text) {
-      const rows = await apiFetch('todos', {
-        method: 'POST',
-        body: JSON.stringify({ text, done: false })
-      });
-      return rows[0];
+    function setMsg(text, type) {
+      const el = document.getElementById('auth-msg');
+      el.textContent = text;
+      el.className   = 'auth-msg' + (type ? ` ${type}` : '');
     }
 
-    async function updateTodo(id, patch) {
-      const rows = await apiFetch(`todos?id=eq.${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(patch)
-      });
-      return rows[0];
+    async function doLogin() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return setMsg('E-posta ve şifre gerekli.', 'error');
+      try {
+        const data = await authFetch('token?grant_type=password', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+        saveSession(data);
+        enterApp();
+      } catch (e) {
+        setMsg(e.message, 'error');
+      }
     }
 
-    async function deleteTodo(id) {
-      await apiFetch(`todos?id=eq.${id}`, { method: 'DELETE' });
+    async function doRegister() {
+      const email    = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!email || !password) return setMsg('E-posta ve şifre gerekli.', 'error');
+      if (password.length < 6)  return setMsg('Şifre en az 6 karakter olmalı.', 'error');
+      try {
+        await authFetch('signup', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+        setMsg('Kayıt başarılı! E-posta adresinize onay bağlantısı gönderildi. Lütfen e-postanızı kontrol edin.', 'success');
+      } catch (e) {
+        setMsg(e.message, 'error');
+      }
     }
 
-    async function deleteCompleted() {
-      await apiFetch('todos?done=eq.true', { method: 'DELETE' });
+    async function doLogout() {
+      if (session) {
+        await authFetch('logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        }).catch(() => {});
+      }
+      clearSession();
+      todos = [];
+      document.getElementById('app-section').style.display  = 'none';
+      document.getElementById('auth-section').style.display = '';
+      showTab('login');
     }
 
-    // ── Render ───────────────────────────────────────────────────
+    // ── App UI ───────────────────────────────────────────────────
+    function enterApp() {
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display  = '';
+      document.getElementById('user-email-label').textContent = session.user?.email || '';
+      loadTodos();
+    }
+
+    async function loadTodos() {
+      document.getElementById('todo-list').innerHTML = '<p class="empty-msg">Yükleniyor...</p>';
+      todos = await api.list();
+      render();
+    }
+
     function render() {
+      const list     = document.getElementById('todo-list');
       const filtered = todos.filter(t => {
         if (filter === 'active')    return !t.done;
         if (filter === 'completed') return t.done;
         return true;
       });
 
-      if (filtered.length === 0) {
-        list.innerHTML = '<p class="empty-msg">Görev yok</p>';
-      } else {
-        list.innerHTML = filtered.map(t => `
-          <li class="todo-item ${t.done ? 'completed' : ''}" data-id="${t.id}">
-            <input type="checkbox" ${t.done ? 'checked' : ''}>
-            <span class="text">${escapeHtml(t.text)}</span>
-            <input class="edit-input" type="text" value="${escapeHtml(t.text)}" maxlength="200">
-            <button class="edit-btn" title="Düzenle">&#9998;</button>
-            <button class="save-btn" title="Kaydet">Kaydet</button>
-            <button class="delete-btn" title="Sil">&times;</button>
-          </li>
-        `).join('');
-      }
+      list.innerHTML = filtered.length === 0
+        ? '<p class="empty-msg">Görev yok</p>'
+        : filtered.map(t => `
+            <li class="todo-item ${t.done ? 'completed' : ''}" data-id="${t.id}">
+              <input type="checkbox" ${t.done ? 'checked' : ''}>
+              <span class="text">${esc(t.text)}</span>
+              <input class="edit-input" type="text" value="${esc(t.text)}" maxlength="200">
+              <button class="edit-btn" title="Düzenle">&#9998;</button>
+              <button class="save-btn">Kaydet</button>
+              <button class="delete-btn" title="Sil">&times;</button>
+            </li>`).join('');
 
       const remaining = todos.filter(t => !t.done).length;
-      countLabel.textContent = `${remaining} görev kaldı`;
+      document.getElementById('count-label').textContent = `${remaining} görev kaldı`;
     }
 
-    function escapeHtml(str) {
+    function esc(str) {
       return str.replace(/[&<>"']/g, c =>
         ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function setLoading(on) {
-      document.getElementById('add-btn').disabled = on;
-    }
-
-    // ── Actions ──────────────────────────────────────────────────
+    // ── Todo events ──────────────────────────────────────────────
     async function addTodo() {
-      const text = input.value.trim();
+      const input = document.getElementById('todo-input');
+      const text  = input.value.trim();
       if (!text) return;
       input.value = '';
-      setLoading(true);
+      document.getElementById('add-btn').disabled = true;
       try {
-        const todo = await createTodo(text);
-        todos.push(todo);
+        const rows = await api.create(text);
+        todos.push(rows[0]);
         render();
       } finally {
-        setLoading(false);
+        document.getElementById('add-btn').disabled = false;
       }
     }
 
     document.getElementById('add-btn').addEventListener('click', addTodo);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+    document.getElementById('todo-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTodo();
+    });
 
-    list.addEventListener('change', async e => {
+    document.getElementById('todo-list').addEventListener('change', async e => {
       if (e.target.type !== 'checkbox') return;
-      const id = +e.target.closest('.todo-item').dataset.id;
+      const id   = +e.target.closest('.todo-item').dataset.id;
       const done = e.target.checked;
-      const updated = await updateTodo(id, { done });
-      const idx = todos.findIndex(t => t.id === id);
-      if (idx !== -1) todos[idx] = updated;
+      const rows = await api.update(id, { done });
+      const idx  = todos.findIndex(t => t.id === id);
+      if (idx !== -1) todos[idx] = rows[0];
       render();
     });
 
-    list.addEventListener('click', async e => {
+    document.getElementById('todo-list').addEventListener('click', async e => {
       const item = e.target.closest('.todo-item');
       if (!item) return;
       const id = +item.dataset.id;
 
       if (e.target.classList.contains('delete-btn')) {
-        await deleteTodo(id);
+        await api.remove(id);
         todos = todos.filter(t => t.id !== id);
         render();
       } else if (e.target.classList.contains('edit-btn')) {
         item.classList.add('editing');
-        const editInput = item.querySelector('.edit-input');
-        editInput.focus();
-        editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+        const ei = item.querySelector('.edit-input');
+        ei.focus(); ei.setSelectionRange(ei.value.length, ei.value.length);
       } else if (e.target.classList.contains('save-btn')) {
-        const editInput = item.querySelector('.edit-input');
-        const newText = editInput.value.trim();
+        const newText = item.querySelector('.edit-input').value.trim();
         if (!newText) return;
-        const updated = await updateTodo(id, { text: newText });
-        const idx = todos.findIndex(t => t.id === id);
-        if (idx !== -1) todos[idx] = updated;
+        const rows = await api.update(id, { text: newText });
+        const idx  = todos.findIndex(t => t.id === id);
+        if (idx !== -1) todos[idx] = rows[0];
         render();
       }
     });
 
-    list.addEventListener('keydown', async e => {
+    document.getElementById('todo-list').addEventListener('keydown', async e => {
       if (!e.target.classList.contains('edit-input')) return;
       const item = e.target.closest('.todo-item');
-      const id = +item.dataset.id;
+      const id   = +item.dataset.id;
       if (e.key === 'Enter') {
         const newText = e.target.value.trim();
         if (!newText) return;
-        const updated = await updateTodo(id, { text: newText });
-        const idx = todos.findIndex(t => t.id === id);
-        if (idx !== -1) todos[idx] = updated;
+        const rows = await api.update(id, { text: newText });
+        const idx  = todos.findIndex(t => t.id === id);
+        if (idx !== -1) todos[idx] = rows[0];
         render();
       } else if (e.key === 'Escape') {
         item.classList.remove('editing');
@@ -422,17 +593,15 @@
     });
 
     document.getElementById('clear-btn').addEventListener('click', async () => {
-      await deleteCompleted();
+      await api.removeCompleted();
       todos = todos.filter(t => !t.done);
       render();
     });
 
-    // ── Init ─────────────────────────────────────────────────────
-    (async () => {
-      list.innerHTML = '<p class="empty-msg">Yükleniyor...</p>';
-      todos = await fetchTodos();
-      render();
-    })();
+    // ── Bootstrap ────────────────────────────────────────────────
+    if (session?.access_token) {
+      enterApp();
+    }
   </script>
 </body>
 </html>
