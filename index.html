@@ -599,9 +599,31 @@
     });
 
     // ── Bootstrap ────────────────────────────────────────────────
-    if (session?.access_token) {
-      enterApp();
-    }
+    // Handle email confirmation redirect (#access_token=...&type=signup)
+    (async () => {
+      const hash   = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken  = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const type         = params.get('type');
+
+      if (accessToken) {
+        // Clear hash from URL bar without reload
+        history.replaceState(null, '', window.location.pathname);
+
+        if (type === 'signup' || type === 'magiclink' || type === 'recovery') {
+          // Fetch user info using the token from the hash
+          const res  = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: authHeaders(accessToken)
+          });
+          const user = await res.json();
+          saveSession({ access_token: accessToken, refresh_token: refreshToken, user });
+          enterApp();
+        }
+      } else if (session?.access_token) {
+        enterApp();
+      }
+    })();
   </script>
 </body>
 </html>
