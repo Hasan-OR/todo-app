@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Todo Uygulaması</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -355,6 +356,47 @@
     let todos   = [];
     let filter  = 'all';
 
+    let supabaseRt = null;
+    let rtChannel  = null;
+
+    function subscribeRealtime() {
+      if (supabaseRt) {
+        if (rtChannel) supabaseRt.removeChannel(rtChannel);
+        supabaseRt.realtime.disconnect();
+      }
+      supabaseRt = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      supabaseRt.realtime.setAuth(session.access_token);
+      rtChannel = supabaseRt
+        .channel('todos-web')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${session.user.id}` },
+          (payload) => {
+            const { eventType, new: n, old: o } = payload;
+            if (eventType === 'INSERT' && n?.id) {
+              if (!todos.some(t => t.id === n.id)) { todos.push(n); render(); }
+            } else if (eventType === 'UPDATE' && n?.id) {
+              const i = todos.findIndex(t => t.id === n.id);
+              if (i !== -1) { todos[i] = n; render(); }
+            } else if (eventType === 'DELETE' && o?.id) {
+              todos = todos.filter(t => t.id !== o.id); render();
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    function unsubscribeRealtime() {
+      if (supabaseRt) {
+        if (rtChannel) supabaseRt.removeChannel(rtChannel);
+        supabaseRt.realtime.disconnect();
+        supabaseRt = null;
+        rtChannel  = null;
+      }
+    }
+
     // ── Auth helpers ─────────────────────────────────────────────
     function authHeaders(token) {
       return {
@@ -384,8 +426,25 @@
       localStorage.removeItem('sb_session');
     }
 
+    function isTokenExpired(token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.exp * 1000 < Date.now() + 60_000;
+      } catch { return true; }
+    }
+
+    async function refreshSession() {
+      if (!session?.refresh_token) throw new Error('Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+      const data = await authFetch('token?grant_type=refresh_token', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: session.refresh_token })
+      });
+      saveSession(data);
+      return data;
+    }
+
     // ── REST API helpers ─────────────────────────────────────────
-    async function apiFetch(path, options = {}) {
+    async function apiFetch(path, options = {}, retry = true) {
       const token = session?.access_token;
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
         ...options,
@@ -397,7 +456,15 @@
       });
       if (res.status === 204 || res.headers.get('content-length') === '0') return null;
       const text = await res.text();
-      if (!res.ok) throw new Error(text);
+      if (!res.ok) {
+        if (retry && res.status === 401) {
+          try {
+            await refreshSession();
+            return apiFetch(path, options, false);
+          } catch { /* fall through */ }
+        }
+        throw new Error(text);
+      }
       return text ? JSON.parse(text) : null;
     }
 
@@ -457,6 +524,7 @@
     }
 
     async function doLogout() {
+      unsubscribeRealtime();
       if (session) {
         await authFetch('logout', {
           method: 'POST',
@@ -476,6 +544,7 @@
       document.getElementById('app-section').style.display  = 'block';
       document.getElementById('user-email-label').textContent = session.user?.email || '';
       loadTodos();
+      subscribeRealtime();
     }
 
     async function loadTodos() {
@@ -626,7 +695,10 @@
           enterApp();
         }
       } else if (session?.access_token) {
-        enterApp();
+        if (isTokenExpired(session.access_token)) {
+          try { await refreshSession(); } catch { clearSession(); }
+        }
+        if (session) enterApp();
       }
     })();
   </script>
