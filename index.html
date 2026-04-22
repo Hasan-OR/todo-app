@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Todo Uygulaması</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -356,45 +355,25 @@
     let todos   = [];
     let filter  = 'all';
 
-    let supabaseRt = null;
-    let rtChannel  = null;
+    let pollTimer = null;
 
-    function subscribeRealtime() {
-      if (supabaseRt) {
-        if (rtChannel) supabaseRt.removeChannel(rtChannel);
-        supabaseRt.realtime.disconnect();
+    async function pollTodos() {
+      const fresh = await api.list().catch(() => null);
+      if (!fresh) return;
+      // only re-render if something actually changed
+      if (JSON.stringify(fresh) !== JSON.stringify(todos)) {
+        todos = fresh;
+        render();
       }
-      // Use user JWT as apikey so the WebSocket connection itself is authenticated
-      supabaseRt = window.supabase.createClient(SUPABASE_URL, session.access_token, {
-        auth: { persistSession: false, autoRefreshToken: false }
-      });
-      rtChannel = supabaseRt
-        .channel('todos-web')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'todos' },
-          (payload) => {
-            const { eventType, new: n, old: o } = payload;
-            if (eventType === 'INSERT' && n?.id) {
-              if (!todos.some(t => t.id === n.id)) { todos.push(n); render(); }
-            } else if (eventType === 'UPDATE' && n?.id) {
-              const i = todos.findIndex(t => t.id === n.id);
-              if (i !== -1) { todos[i] = n; render(); }
-            } else if (eventType === 'DELETE' && o?.id) {
-              todos = todos.filter(t => t.id !== o.id); render();
-            }
-          }
-        )
-        .subscribe();
     }
 
-    function unsubscribeRealtime() {
-      if (supabaseRt) {
-        if (rtChannel) supabaseRt.removeChannel(rtChannel);
-        supabaseRt.realtime.disconnect();
-        supabaseRt = null;
-        rtChannel  = null;
-      }
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(pollTodos, 3000);
+    }
+
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     }
 
     // ── Auth helpers ─────────────────────────────────────────────
@@ -524,7 +503,7 @@
     }
 
     async function doLogout() {
-      unsubscribeRealtime();
+      stopPolling();
       if (session) {
         await authFetch('logout', {
           method: 'POST',
@@ -544,7 +523,7 @@
       document.getElementById('app-section').style.display  = 'block';
       document.getElementById('user-email-label').textContent = session.user?.email || '';
       loadTodos();
-      subscribeRealtime();
+      startPolling();
     }
 
     async function loadTodos() {
