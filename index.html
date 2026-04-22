@@ -364,15 +364,15 @@
         if (rtChannel) supabaseRt.removeChannel(rtChannel);
         supabaseRt.realtime.disconnect();
       }
-      supabaseRt = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      // Use user JWT as apikey so the WebSocket connection itself is authenticated
+      supabaseRt = window.supabase.createClient(SUPABASE_URL, session.access_token, {
         auth: { persistSession: false, autoRefreshToken: false }
       });
-      supabaseRt.realtime.setAuth(session.access_token);
       rtChannel = supabaseRt
         .channel('todos-web')
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${session.user.id}` },
+          { event: '*', schema: 'public', table: 'todos' },
           (payload) => {
             const { eventType, new: n, old: o } = payload;
             if (eventType === 'INSERT' && n?.id) {
